@@ -70,11 +70,16 @@ func (r *userRepository) CreateUser(user *models.User, profile *models.UserProfi
 
 func (r *userRepository) FindUserByEmail(email string) (*models.User, error) {
 	var user models.User
-	if err := r.db.Where("email = ?", email).First(&user).Error; err != nil {
+	err := r.db.Where("email = ?", email).First(&user).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
 		return nil, err
 	}
 	return &user, nil
 }
+
 func (r *userRepository) FindUserByID(user_id uuid.UUID) (*models.User, error) {
 	var user models.User
 	if err := r.db.Where("id = ?", user_id).First(&user).Error; err != nil {

@@ -30,12 +30,28 @@ func NewAppConfig(config *AppConfig) {
 	authUseCase := usecase.NewAuthUseCase(userRepo, config.Log, config.Validate, config.Viper)
 	authController := controller.NewAuthController(authUseCase, config.Log, config.Validate)
 	authMiddleware := middleware.NewAuth(authUseCase, config.Log, config.Viper)
-	routeConfig := route.RouteConfig{
+
+	productRepo := repositorys.NewProductRepository(config.DB)
+	productUseCase := usecase.NewProductUseCase(productRepo, config.Log, config.Validate)
+	productController := controller.NewProductController(productUseCase, config.Log, config.Validate)
+	productMiddleware := middleware.NewProductMiddleware(productUseCase, config.Log)
+
+	authRoutesConfig := route.RouteConfig{
 		App:            config.App,
 		AuthController: authController,
 		AuthMiddleware: authMiddleware,
 	}
-	routeConfig.Setup()
+
+	productRouteConfig := route.ProductRouteConfig{
+		App:               config.App,
+		ProductController: productController,
+		ProductMiddleware: productMiddleware,
+		AuthMiddleware:    authMiddleware,
+	}
+
+	productRouteConfig.Setup()
+	authRoutesConfig.Setup()
+
 	config.Log.Info("Server starting on :3000")
 	if err := config.App.Listen(":3000"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

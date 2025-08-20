@@ -13,18 +13,22 @@ type ProductCategory struct {
 	Description string         `gorm:"type:text"`
 	CreatedAt   time.Time      `gorm:"default:current_timestamp"`
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	UpdatedAt   time.Time      `gorm:"default:current_timestamp"`
 }
 
 type Product struct {
-	ID          uuid.UUID      `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
-	Name        string         `gorm:"type:varchar(255);not null"`
-	SKU         string         `gorm:"type:varchar(100);unique;not null"`
-	CategoryID  uuid.UUID      `gorm:"column:category_id;type:uuid"`
-	Description string         `gorm:"type:text"`
-	CreatedBy   uuid.UUID      `gorm:"column:created_by;type:uuid"`
-	CreatedAt   time.Time      `gorm:"default:current_timestamp"`
-	UpdatedAt   time.Time      `gorm:"default:current_timestamp"`
+	ID          uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()"`
+	Name        string    `gorm:"not null"`
+	SKU         string    `gorm:"unique;not null"`
+	CategoryID  uuid.UUID `gorm:"not null"`
+	Description string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	CreatedBy   uuid.UUID      `gorm:"column:created_by;type:uuid"`
+
+	// Relasi ke category
+	Category ProductCategory `gorm:"foreignKey:CategoryID;references:ID"`
 }
 
 type WarehouseLocation struct {
@@ -44,6 +48,9 @@ type ProductStock struct {
 	UpdatedBy           uuid.UUID      `gorm:"column:updated_by;type:uuid"`
 	UpdatedAt           time.Time      `gorm:"default:current_timestamp"`
 	DeletedAt           gorm.DeletedAt `gorm:"index"`
+
+	Product           Product           `gorm:"foreignKey:SourceProductID;references:ID"`
+	WarehouseLocation WarehouseLocation `gorm:"foreignKey:WarehouseLocationID;references:ID"`
 }
 
 type StockMovement struct {

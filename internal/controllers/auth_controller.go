@@ -1,5 +1,4 @@
-// TODO:
-package controller
+package controllers
 
 import (
 	"auth-service/internal/dtos"

@@ -44,7 +44,7 @@ func NewProductController(usecase usecases.ProductUseCase, log *logrus.Logger, v
 func (c *productController) CreateProductCategory(ctx *fiber.Ctx) error {
 	var req dtos.CreateProductCategoryRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -52,7 +52,7 @@ func (c *productController) CreateProductCategory(ctx *fiber.Ctx) error {
 		})
 	}
 	if err := c.validate.Struct(req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -63,7 +63,7 @@ func (c *productController) CreateProductCategory(ctx *fiber.Ctx) error {
 	userID := ctx.Locals("userID").(uuid.UUID)
 	category, err := c.usecase.CreateProductCategory(ctx.Context(), req, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -71,7 +71,7 @@ func (c *productController) CreateProductCategory(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusCreated).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusCreated,
 		Message:    "Product category created successfully",
@@ -83,7 +83,7 @@ func (c *productController) GetProductCategoryByID(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	categoryID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -93,7 +93,7 @@ func (c *productController) GetProductCategoryByID(ctx *fiber.Ctx) error {
 
 	category, err := c.usecase.GetProductCategoryByID(ctx.Context(), categoryID)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusNotFound).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusNotFound,
 			Message:    err.Error(),
@@ -101,7 +101,7 @@ func (c *productController) GetProductCategoryByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product category retrieved successfully",
@@ -113,7 +113,7 @@ func (c *productController) UpdateProductCategory(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	categoryID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -123,7 +123,7 @@ func (c *productController) UpdateProductCategory(ctx *fiber.Ctx) error {
 
 	var req dtos.UpdateProductCategoryRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -131,7 +131,7 @@ func (c *productController) UpdateProductCategory(ctx *fiber.Ctx) error {
 		})
 	}
 	if err := c.validate.Struct(req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -142,7 +142,7 @@ func (c *productController) UpdateProductCategory(ctx *fiber.Ctx) error {
 	userID := ctx.Locals("userID").(uuid.UUID)
 	category, err := c.usecase.UpdateProductCategory(ctx.Context(), categoryID, req, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -150,7 +150,7 @@ func (c *productController) UpdateProductCategory(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product category updated successfully",
@@ -162,7 +162,7 @@ func (c *productController) DeleteProductCategory(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	categoryID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -172,7 +172,7 @@ func (c *productController) DeleteProductCategory(ctx *fiber.Ctx) error {
 
 	userID := ctx.Locals("userID").(uuid.UUID)
 	if err := c.usecase.DeleteProductCategory(ctx.Context(), categoryID, userID); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -180,7 +180,7 @@ func (c *productController) DeleteProductCategory(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product category deleted successfully",
@@ -191,7 +191,7 @@ func (c *productController) DeleteProductCategory(ctx *fiber.Ctx) error {
 func (c *productController) CreateProductStock(ctx *fiber.Ctx) error {
 	var req dtos.CreateProductStockRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -199,7 +199,7 @@ func (c *productController) CreateProductStock(ctx *fiber.Ctx) error {
 		})
 	}
 	if err := c.validate.Struct(req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -210,7 +210,7 @@ func (c *productController) CreateProductStock(ctx *fiber.Ctx) error {
 	userID := ctx.Locals("userID").(uuid.UUID)
 	stock, err := c.usecase.CreateProductStock(ctx.Context(), req, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -218,7 +218,7 @@ func (c *productController) CreateProductStock(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusCreated).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusCreated,
 		Message:    "Product stock created successfully",
@@ -230,7 +230,7 @@ func (c *productController) GetProductStockByID(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	stockID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -240,7 +240,7 @@ func (c *productController) GetProductStockByID(ctx *fiber.Ctx) error {
 
 	stock, err := c.usecase.GetProductStockByID(ctx.Context(), stockID)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusNotFound).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusNotFound,
 			Message:    err.Error(),
@@ -248,7 +248,7 @@ func (c *productController) GetProductStockByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product stock retrieved successfully",
@@ -260,7 +260,7 @@ func (c *productController) UpdateProductStock(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	stockID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -270,7 +270,7 @@ func (c *productController) UpdateProductStock(ctx *fiber.Ctx) error {
 
 	var req dtos.UpdateProductStockRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -278,7 +278,7 @@ func (c *productController) UpdateProductStock(ctx *fiber.Ctx) error {
 		})
 	}
 	if err := c.validate.Struct(req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -289,7 +289,7 @@ func (c *productController) UpdateProductStock(ctx *fiber.Ctx) error {
 	userID := ctx.Locals("userID").(uuid.UUID)
 	stock, err := c.usecase.UpdateProductStock(ctx.Context(), stockID, req, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -297,7 +297,7 @@ func (c *productController) UpdateProductStock(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product stock updated successfully",
@@ -309,7 +309,7 @@ func (c *productController) DeleteProductStock(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	stockID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -319,7 +319,7 @@ func (c *productController) DeleteProductStock(ctx *fiber.Ctx) error {
 
 	userID := ctx.Locals("userID").(uuid.UUID)
 	if err := c.usecase.DeleteProductStock(ctx.Context(), stockID, userID); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -327,7 +327,7 @@ func (c *productController) DeleteProductStock(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product stock deleted successfully",
@@ -338,7 +338,7 @@ func (c *productController) DeleteProductStock(ctx *fiber.Ctx) error {
 func (c *productController) CreateProduct(ctx *fiber.Ctx) error {
 	var req dtos.CreateProductRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -346,7 +346,7 @@ func (c *productController) CreateProduct(ctx *fiber.Ctx) error {
 		})
 	}
 	if err := c.validate.Struct(req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -357,7 +357,7 @@ func (c *productController) CreateProduct(ctx *fiber.Ctx) error {
 	userID := ctx.Locals("userID").(uuid.UUID)
 	product, err := c.usecase.CreateProduct(ctx.Context(), req, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -365,7 +365,7 @@ func (c *productController) CreateProduct(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusCreated).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusCreated).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusCreated,
 		Message:    "Product created successfully",
@@ -377,7 +377,7 @@ func (c *productController) GetProductByID(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	productID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -387,7 +387,7 @@ func (c *productController) GetProductByID(ctx *fiber.Ctx) error {
 
 	product, err := c.usecase.GetProductByID(ctx.Context(), productID)
 	if err != nil {
-		return ctx.Status(fiber.StatusNotFound).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusNotFound).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusNotFound,
 			Message:    err.Error(),
@@ -395,7 +395,7 @@ func (c *productController) GetProductByID(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product retrieved successfully",
@@ -407,7 +407,7 @@ func (c *productController) UpdateProduct(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	productID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -417,7 +417,7 @@ func (c *productController) UpdateProduct(ctx *fiber.Ctx) error {
 
 	var req dtos.UpdateProductRequest
 	if err := ctx.BodyParser(&req); err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    err.Error(),
@@ -428,7 +428,7 @@ func (c *productController) UpdateProduct(ctx *fiber.Ctx) error {
 	userID := ctx.Locals("userID").(uuid.UUID)
 	product, err := c.usecase.UpdateProduct(ctx.Context(), productID, req, userID)
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -436,7 +436,7 @@ func (c *productController) UpdateProduct(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product updated successfully",
@@ -448,7 +448,7 @@ func (c *productController) DeleteProduct(ctx *fiber.Ctx) error {
 	id := ctx.Params("id")
 	productID, err := uuid.Parse(id)
 	if err != nil {
-		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusBadRequest,
 			Message:    "Invalid ID format",
@@ -458,7 +458,7 @@ func (c *productController) DeleteProduct(ctx *fiber.Ctx) error {
 
 	userID := ctx.Locals("userID").(uuid.UUID)
 	if err := c.usecase.DeleteProduct(ctx.Context(), productID, userID); err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.RefreshTokenResponse{
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
 			Message:    err.Error(),
@@ -466,7 +466,7 @@ func (c *productController) DeleteProduct(ctx *fiber.Ctx) error {
 		})
 	}
 
-	return ctx.Status(fiber.StatusOK).JSON(dtos.RefreshTokenResponse{
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product deleted successfully",

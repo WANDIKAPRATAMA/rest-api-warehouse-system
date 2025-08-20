@@ -66,7 +66,7 @@ type ProductStockResponse struct {
 	UpdatedAt           string    `json:"updated_at"`
 }
 
-type RefreshTokenResponse struct {
+type ApiResponse struct {
 	Status     string      `json:"status"`
 	StatusCode int         `json:"status_code"`
 	Message    string      `json:"message"`

@@ -20,7 +20,7 @@ import (
 
 type AuthUseCase interface {
 	Signup(ctx context.Context, email, password, fullName string) (*models.User, error)
-	Signin(ctx context.Context, email, password string, deviceID *string) (string, string, error) // accessToken, refreshToken
+	Signin(ctx context.Context, email, password string, deviceID *string) (string, string, *models.User, error)
 	ChangePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword string) error
 	RefreshToken(ctx context.Context, refreshToken string, deviceID string) (string, string, error) // newAccessToken
 	ChangeRole(ctx context.Context, userID uuid.UUID, role string) error
@@ -72,31 +72,31 @@ func (u *authUseCase) Signup(ctx context.Context, email, password, fullName stri
 	return user, nil
 }
 
-func (u *authUseCase) Signin(ctx context.Context, email, password string, deviceID *string) (string, string, error) {
+func (u *authUseCase) Signin(ctx context.Context, email, password string, deviceID *string) (string, string, *models.User, error) {
 	user, err := u.repo.FindUserByEmail(email)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	security, err := u.repo.FindUserSecurityByUserID(user.ID)
 	if err != nil {
-		return "", "", fmt.Errorf("invalid email or password")
+		return "", "", nil, fmt.Errorf("invalid email or password")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(security.Password), []byte(password)); err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	role, err := u.repo.FindUserRoleByUserID(user.ID)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	secret := u.config.GetString("jwt.secret")
 
 	accessToken, err := utils.GenerateAccessToken(secret, user.ID, user.Email, role)
 	if err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
 	refreshTokenBytes := make([]byte, 32)
@@ -110,10 +110,10 @@ func (u *authUseCase) Signin(ctx context.Context, email, password string, device
 		DeviceID:     *deviceID,
 	}
 	if err := u.repo.CreateRefreshToken(refresh); err != nil {
-		return "", "", err
+		return "", "", nil, err
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, refreshToken, user, nil
 }
 
 func (u *authUseCase) ChangePassword(ctx context.Context, userID uuid.UUID, oldPassword, newPassword string) error {

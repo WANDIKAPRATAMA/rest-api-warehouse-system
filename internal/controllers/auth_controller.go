@@ -80,7 +80,7 @@ func (c *authController) Signin(ctx *fiber.Ctx) error {
 			[]utils.ErrorDetail{{Field: "X-Device-ID", Message: "Device ID required"}},
 		))
 	}
-	accessToken, refreshToken, err := c.usecase.Signin(ctx.Context(), req.Email, req.Password, &deviceID)
+	accessToken, refreshToken, user, err := c.usecase.Signin(ctx.Context(), req.Email, req.Password, &deviceID)
 	if err != nil {
 		return ctx.Status(fiber.StatusUnauthorized).JSON(utils.ErrorResponse(fiber.StatusUnauthorized, err.Error(), nil))
 	}
@@ -88,6 +88,7 @@ func (c *authController) Signin(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(utils.SuccessResponse(fiber.StatusOK, "Login successful", fiber.Map{
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
+		"user":          user,
 	}, nil))
 }
 

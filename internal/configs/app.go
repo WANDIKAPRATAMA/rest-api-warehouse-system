@@ -52,8 +52,8 @@ func NewAppConfig(config *AppConfig) {
 	productRouteConfig.Setup()
 	authRoutesConfig.Setup()
 
-	config.Log.Info("Server starting on :3000")
-	if err := config.App.Listen(":3000"); err != nil {
+	config.Log.Info("Server starting on :8080")
+	if err := config.App.Listen(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }

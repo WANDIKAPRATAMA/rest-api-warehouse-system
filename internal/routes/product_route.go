@@ -29,6 +29,7 @@ func (r *ProductRouteConfig) Setup() {
 	categories.Get("/:id", r.ProductMiddleware.Authorize, r.ProductController.GetProductCategoryByID)
 	categories.Put("/:id", r.ProductMiddleware.Authorize, r.ProductController.UpdateProductCategory)
 	categories.Delete("/:id", r.ProductMiddleware.Authorize, r.ProductController.DeleteProductCategory)
+	categories.Get("/", r.ProductMiddleware.Authorize, r.ProductController.GetProductCategoriesList)
 
 	stocks := api.Group("/product-stocks", r.AuthMiddleware.Authenticate)
 	stocks.Post("/", r.ProductMiddleware.Authorize, r.ProductController.CreateProductStock)
@@ -39,7 +40,12 @@ func (r *ProductRouteConfig) Setup() {
 
 	warehouse := api.Group("/warehouse-locations", r.AuthMiddleware.Authenticate)
 	warehouse.Get("/", r.ProductMiddleware.Authorize, r.ProductController.GetWarehouseLocationsList)
+	warehouse.Post("/", r.ProductMiddleware.Authorize, r.ProductController.CreateWarehouseLocation)
+	warehouse.Get("/:id", r.ProductMiddleware.Authorize, r.ProductController.GetWarehouseLocationByID)
+	warehouse.Put("/:id", r.ProductMiddleware.Authorize, r.ProductController.UpdateWarehouseLocation)
+	warehouse.Delete("/:id", r.ProductMiddleware.Authorize, r.ProductController.DeleteWarehouseLocation)
 
 	dashboard := api.Group("/dashboard", r.AuthMiddleware.Authenticate)
 	dashboard.Get("/", r.ProductMiddleware.Authorize, r.ProductController.GetDashboardSummary)
+
 }

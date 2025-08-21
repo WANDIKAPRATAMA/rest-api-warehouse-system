@@ -25,10 +25,18 @@ type ProductController interface {
 	UpdateProductStock(c *fiber.Ctx) error
 	DeleteProductStock(c *fiber.Ctx) error
 
+	// Product Stock
+	CreateWarehouseLocation(c *fiber.Ctx) error
+	GetWarehouseLocationByID(c *fiber.Ctx) error
+	UpdateWarehouseLocation(c *fiber.Ctx) error
+	DeleteWarehouseLocation(c *fiber.Ctx) error
+
 	GetProductsList(ctx *fiber.Ctx) error
 	GetWarehouseLocationsList(ctx *fiber.Ctx) error
 	GetProductStocksList(ctx *fiber.Ctx) error
 	GetDashboardSummary(ctx *fiber.Ctx) error
+
+	GetProductCategoriesList(ctx *fiber.Ctx) error
 }
 
 type productController struct {
@@ -75,7 +83,7 @@ func (c *productController) CreateProductCategory(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusCreated,
 		Message:    "Product category created successfully",
-		Payload:    category,
+		Payload:    utils.Payload{Data: category},
 	})
 }
 
@@ -105,7 +113,7 @@ func (c *productController) GetProductCategoryByID(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product category retrieved successfully",
-		Payload:    category,
+		Payload:    utils.Payload{Data: category},
 	})
 }
 
@@ -154,7 +162,7 @@ func (c *productController) UpdateProductCategory(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product category updated successfully",
-		Payload:    category,
+		Payload:    utils.Payload{Data: category},
 	})
 }
 
@@ -222,7 +230,7 @@ func (c *productController) CreateProductStock(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusCreated,
 		Message:    "Product stock created successfully",
-		Payload:    stock,
+		Payload:    utils.Payload{Data: stock},
 	})
 }
 
@@ -252,7 +260,7 @@ func (c *productController) GetProductStockByID(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product stock retrieved successfully",
-		Payload:    stock,
+		Payload:    utils.Payload{Data: stock},
 	})
 }
 
@@ -301,7 +309,7 @@ func (c *productController) UpdateProductStock(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product stock updated successfully",
-		Payload:    stock,
+		Payload:    utils.Payload{Data: stock},
 	})
 }
 
@@ -369,7 +377,7 @@ func (c *productController) CreateProduct(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusCreated,
 		Message:    "Product created successfully",
-		Payload:    product,
+		Payload:    utils.Payload{Data: product},
 	})
 }
 
@@ -399,7 +407,7 @@ func (c *productController) GetProductByID(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product retrieved successfully",
-		Payload:    product,
+		Payload:    utils.Payload{Data: product},
 	})
 }
 
@@ -440,7 +448,7 @@ func (c *productController) UpdateProduct(ctx *fiber.Ctx) error {
 		Status:     "success",
 		StatusCode: fiber.StatusOK,
 		Message:    "Product updated successfully",
-		Payload:    product,
+		Payload:    utils.Payload{Data: product},
 	})
 }
 
@@ -475,7 +483,42 @@ func (c *productController) DeleteProduct(ctx *fiber.Ctx) error {
 }
 
 // Implementasi serupa untuk ProductCategory dan ProductStock
+func (c *productController) GetProductCategoriesList(ctx *fiber.Ctx) error {
+	var req dtos.PaginationRequest
+	if err := ctx.QueryParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+	if err := c.validate.Struct(req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
 
+	list, pagination, err := c.usecase.GetProductCategoriesList(ctx.Context(), req)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusInternalServerError,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
+		Status:     "success",
+		StatusCode: fiber.StatusOK,
+		Message:    "Product categories list retrieved successfully",
+		Payload:    fiber.Map{"data": list, "pagination": pagination},
+	})
+}
 func (c *productController) GetProductsList(ctx *fiber.Ctx) error {
 	var req dtos.PaginationRequest
 	if err := ctx.QueryParser(&req); err != nil {
@@ -493,6 +536,8 @@ func (c *productController) GetProductsList(ctx *fiber.Ctx) error {
 	return ctx.Status(fiber.StatusOK).JSON(utils.SuccessResponse(fiber.StatusOK, "Products list retrieved", list, pagination))
 }
 
+// Warehouse Implementataion Start
+// CreateWarehouseLocation
 func (c *productController) GetWarehouseLocationsList(ctx *fiber.Ctx) error {
 	var req dtos.PaginationRequest
 	if err := ctx.QueryParser(&req); err != nil {
@@ -509,6 +554,159 @@ func (c *productController) GetWarehouseLocationsList(ctx *fiber.Ctx) error {
 
 	return ctx.Status(fiber.StatusOK).JSON(utils.SuccessResponse(fiber.StatusOK, "Warehouse locations list retrieved", list, pagination))
 }
+func (c *productController) CreateWarehouseLocation(ctx *fiber.Ctx) error {
+	var req dtos.CreateWarehouseLocationRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+	if err := c.validate.Struct(req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+
+	userID := ctx.Locals("userID").(uuid.UUID)
+	location, err := c.usecase.CreateWarehouseLocation(ctx.Context(), req, userID)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusInternalServerError,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+
+	return ctx.Status(fiber.StatusCreated).JSON(dtos.ApiResponse{
+		Status:     "success",
+		StatusCode: fiber.StatusCreated,
+		Message:    "Warehouse location created successfully",
+		Payload: utils.Payload{
+			Data: location,
+		},
+	})
+}
+
+// GetWarehouseLocationByID
+func (c *productController) GetWarehouseLocationByID(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+	locationID, err := uuid.Parse(id)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    "Invalid ID format",
+			Payload:    nil,
+		})
+	}
+
+	location, err := c.usecase.GetWarehouseLocationByID(ctx.Context(), locationID)
+	if err != nil {
+		return ctx.Status(fiber.StatusNotFound).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusNotFound,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
+		Status:     "success",
+		StatusCode: fiber.StatusOK,
+		Message:    "Warehouse location retrieved successfully",
+		Payload:    utils.Payload{Data: location},
+	})
+}
+
+// UpdateWarehouseLocation
+func (c *productController) UpdateWarehouseLocation(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+	locationID, err := uuid.Parse(id)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    "Invalid ID format",
+			Payload:    nil,
+		})
+	}
+
+	var req dtos.UpdateWarehouseLocationRequest
+	if err := ctx.BodyParser(&req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+	if err := c.validate.Struct(req); err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+
+	userID := ctx.Locals("userID").(uuid.UUID)
+	location, err := c.usecase.UpdateWarehouseLocation(ctx.Context(), locationID, req, userID)
+	if err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusInternalServerError,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
+		Status:     "success",
+		StatusCode: fiber.StatusOK,
+		Message:    "Warehouse location updated successfully",
+		Payload:    utils.Payload{Data: location},
+	})
+}
+
+// DeleteWarehouseLocation
+func (c *productController) DeleteWarehouseLocation(ctx *fiber.Ctx) error {
+	id := ctx.Params("id")
+	locationID, err := uuid.Parse(id)
+	if err != nil {
+		return ctx.Status(fiber.StatusBadRequest).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusBadRequest,
+			Message:    "Invalid ID format",
+			Payload:    nil,
+		})
+	}
+
+	userID := ctx.Locals("userID").(uuid.UUID)
+	if err := c.usecase.DeleteWarehouseLocation(ctx.Context(), locationID, userID); err != nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
+			Status:     "error",
+			StatusCode: fiber.StatusInternalServerError,
+			Message:    err.Error(),
+			Payload:    nil,
+		})
+	}
+
+	return ctx.Status(fiber.StatusOK).JSON(dtos.ApiResponse{
+		Status:     "success",
+		StatusCode: fiber.StatusOK,
+		Message:    "Warehouse location deleted successfully",
+		Payload:    nil,
+	})
+}
+
+// Warehouse Implementataion End
 
 func (c *productController) GetProductStocksList(ctx *fiber.Ctx) error {
 	var req dtos.PaginationRequest

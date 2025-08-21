@@ -106,7 +106,7 @@ func (u *authUseCase) Signin(ctx context.Context, email, password string, device
 	refresh := &models.RefreshToken{
 		SourceUserID: user.ID,
 		TokenHash:    refreshToken,
-		ExpiresAt:    time.Now().Add(7 * 24 * time.Hour),
+		ExpiresAt:    time.Now().Add(48 * 24 * time.Hour),
 		DeviceID:     *deviceID,
 	}
 	if err := u.repo.CreateRefreshToken(refresh); err != nil {

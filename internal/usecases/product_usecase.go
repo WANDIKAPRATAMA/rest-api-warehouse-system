@@ -29,9 +29,15 @@ type ProductUseCase interface {
 	DeleteProductStock(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
 	TrackStockMovement(ctx context.Context, productID uuid.UUID, movementType string, quantity int, userID uuid.UUID) error
 
+	CreateWarehouseLocation(ctx context.Context, req dtos.CreateWarehouseLocationRequest, userID uuid.UUID) (*dtos.WarehouseLocationResponse, error)
+	GetWarehouseLocationByID(ctx context.Context, id uuid.UUID) (*dtos.WarehouseLocationResponse, error)
+	UpdateWarehouseLocation(ctx context.Context, id uuid.UUID, req dtos.UpdateWarehouseLocationRequest, userID uuid.UUID) (*dtos.WarehouseLocationResponse, error)
+	DeleteWarehouseLocation(ctx context.Context, id uuid.UUID, userID uuid.UUID) error
+
 	GetProductsList(ctx context.Context, req dtos.PaginationRequest) ([]dtos.ProductListResponse, dtos.Pagination, error)
 	GetWarehouseLocationsList(ctx context.Context, req dtos.PaginationRequest) ([]dtos.WarehouseLocationListResponse, dtos.Pagination, error)
 	GetProductStocksList(ctx context.Context, req dtos.PaginationRequest) ([]dtos.ProductStockListResponse, dtos.Pagination, error)
+	GetProductCategoriesList(ctx context.Context, req dtos.PaginationRequest) ([]dtos.ProductCategoryListResponse, dtos.Pagination, error)
 	GetDashboardSummary(ctx context.Context) (*dtos.DashboardResponse, error)
 }
 
@@ -197,22 +203,12 @@ func (u *productUseCase) DeleteProductCategory(ctx context.Context, id uuid.UUID
 }
 
 // Implementasi untuk ProductStock
-func (u *productUseCase) CreateProductStock(ctx context.Context, req dtos.CreateProductStockRequest, userID uuid.UUID) (*dtos.ProductStockResponse, error) {
-	if err := u.validate.Struct(req); err != nil {
+
+func (u *productUseCase) GetProductStockByID(ctx context.Context, id uuid.UUID) (*dtos.ProductStockResponse, error) {
+	stock, err := u.repo.GetProductStockByID(id)
+	if err != nil {
 		return nil, err
 	}
-
-	stock := &models.ProductStock{
-		ID:                  uuid.New(),
-		SourceProductID:     req.ProductID,
-		WarehouseLocationID: req.WarehouseLocationID,
-		Quantity:            req.Quantity,
-		UpdatedBy:           userID,
-	}
-	if err := u.repo.CreateProductStock(stock); err != nil {
-		return nil, err
-	}
-
 	return &dtos.ProductStockResponse{
 		ID:                  stock.ID,
 		ProductID:           stock.SourceProductID,
@@ -223,11 +219,32 @@ func (u *productUseCase) CreateProductStock(ctx context.Context, req dtos.Create
 	}, nil
 }
 
-func (u *productUseCase) GetProductStockByID(ctx context.Context, id uuid.UUID) (*dtos.ProductStockResponse, error) {
-	stock, err := u.repo.GetProductStockByID(id)
-	if err != nil {
+func (u *productUseCase) CreateProductStock(ctx context.Context, req dtos.CreateProductStockRequest, userID uuid.UUID) (*dtos.ProductStockResponse, error) {
+	if err := u.validate.Struct(req); err != nil {
 		return nil, err
 	}
+
+	stock := &models.ProductStock{
+		ID:                  uuid.New(),
+		SourceProductID:     req.ProductID,
+		WarehouseLocationID: req.WarehouseLocationID,
+		Quantity:            req.Quantity,
+		Status:              u.determineStockStatus(req.Quantity),
+		UpdatedBy:           userID,
+		UpdatedAt:           time.Now(),
+	}
+	if err := u.repo.CreateProductStock(stock); err != nil {
+		return nil, err
+	}
+
+	// Catat initial movement sebagai 'inbound'
+	if req.Quantity > 0 {
+		if err := u.TrackStockMovement(ctx, req.ProductID, "inbound", req.Quantity, userID); err != nil {
+			u.log.Errorf("Failed to track initial stock movement: %v", err)
+			// Optional: Rollback create jika critical, tapi di sini log saja untuk simplicity
+		}
+	}
+
 	return &dtos.ProductStockResponse{
 		ID:                  stock.ID,
 		ProductID:           stock.SourceProductID,
@@ -248,7 +265,31 @@ func (u *productUseCase) UpdateProductStock(ctx context.Context, id uuid.UUID, r
 		return nil, err
 	}
 
-	stock.Quantity = req.Quantity
+	oldQuantity := stock.Quantity
+	newQuantity := req.Quantity
+
+	// Hitung delta
+	delta := newQuantity - oldQuantity
+	if delta != 0 {
+		movementType := "inbound"
+		movementQuantity := delta
+		if delta < 0 {
+			movementType = "outbound"
+			movementQuantity = -delta
+			if newQuantity < 0 {
+				return nil, fmt.Errorf("new quantity cannot be negative")
+			}
+		}
+
+		// Catat movement
+		if err := u.TrackStockMovement(ctx, stock.SourceProductID, movementType, movementQuantity, userID); err != nil {
+			return nil, err
+		}
+	}
+
+	// Perbarui stok
+	stock.Quantity = newQuantity
+	stock.Status = u.determineStockStatus(newQuantity)
 	stock.UpdatedAt = time.Now()
 	stock.UpdatedBy = userID
 	if err := u.repo.UpdateProductStock(stock); err != nil {
@@ -387,6 +428,82 @@ func (u *productUseCase) GetProductsList(ctx context.Context, req dtos.Paginatio
 	return list, pagination, nil
 }
 
+// Warehouse Implemetatation
+func (u *productUseCase) CreateWarehouseLocation(ctx context.Context, req dtos.CreateWarehouseLocationRequest, userID uuid.UUID) (*dtos.WarehouseLocationResponse, error) {
+	if err := u.validate.Struct(req); err != nil {
+		return nil, err
+	}
+
+	location := &models.WarehouseLocation{
+		ID:          uuid.New(),
+		Name:        req.Name,
+		Description: req.Description,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+	if err := u.repo.CreateWarehouseLocation(location); err != nil {
+		return nil, err
+	}
+
+	return &dtos.WarehouseLocationResponse{
+		ID:          location.ID,
+		Name:        location.Name,
+		Description: location.Description,
+		CreatedAt:   location.CreatedAt,
+		UpdatedAt:   location.UpdatedAt,
+	}, nil
+}
+
+// GetWarehouseLocationByID
+func (u *productUseCase) GetWarehouseLocationByID(ctx context.Context, id uuid.UUID) (*dtos.WarehouseLocationResponse, error) {
+	location, err := u.repo.GetWarehouseLocationByID(id)
+	if err != nil {
+		return nil, err
+	}
+	return &dtos.WarehouseLocationResponse{
+		ID:          location.ID,
+		Name:        location.Name,
+		Description: location.Description,
+		CreatedAt:   location.CreatedAt,
+		UpdatedAt:   location.UpdatedAt,
+	}, nil
+}
+
+// UpdateWarehouseLocation
+func (u *productUseCase) UpdateWarehouseLocation(ctx context.Context, id uuid.UUID, req dtos.UpdateWarehouseLocationRequest, userID uuid.UUID) (*dtos.WarehouseLocationResponse, error) {
+	if err := u.validate.Struct(req); err != nil {
+		return nil, err
+	}
+
+	location, err := u.repo.GetWarehouseLocationByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	location.Name = req.Name
+	location.Description = req.Description
+	location.UpdatedAt = time.Now()
+	if err := u.repo.UpdateWarehouseLocation(location); err != nil {
+		return nil, err
+	}
+
+	return &dtos.WarehouseLocationResponse{
+		ID:          location.ID,
+		Name:        location.Name,
+		Description: location.Description,
+		CreatedAt:   location.CreatedAt,
+		UpdatedAt:   location.UpdatedAt,
+	}, nil
+}
+
+// DeleteWarehouseLocation
+func (u *productUseCase) DeleteWarehouseLocation(ctx context.Context, id uuid.UUID, userID uuid.UUID) error {
+	_, err := u.repo.GetWarehouseLocationByID(id)
+	if err != nil {
+		return err
+	}
+	return u.repo.DeleteWarehouseLocation(id)
+}
 func (u *productUseCase) GetWarehouseLocationsList(ctx context.Context, req dtos.PaginationRequest) ([]dtos.WarehouseLocationListResponse, dtos.Pagination, error) {
 	// Logika serupa dengan GetProductsList, adaptasi untuk WarehouseLocation
 	locations, total, err := u.repo.GetWarehouseLocationsList(req)
@@ -468,5 +585,56 @@ func (u *productUseCase) GetDashboardSummary(ctx context.Context) (*dtos.Dashboa
 	if err != nil {
 		return nil, err
 	}
-	return &summary, nil
+	return summary, nil
+}
+func (u *productUseCase) GetProductCategoriesList(ctx context.Context, req dtos.PaginationRequest) ([]dtos.ProductCategoryListResponse, dtos.Pagination, error) {
+	if err := u.validate.Struct(req); err != nil {
+		return nil, dtos.Pagination{}, err
+	}
+	if req.Page == 0 {
+		req.Page = 1
+	}
+	if req.Limit == 0 {
+		req.Limit = 10
+	}
+	if req.Order == "" {
+		req.Order = "asc"
+	}
+	if req.SortBy == "" {
+		req.SortBy = "created_at"
+	}
+
+	categories, total, err := u.repo.GetProductCategoriesList(req)
+	if err != nil {
+		return nil, dtos.Pagination{}, err
+	}
+
+	var list []dtos.ProductCategoryListResponse
+	for _, c := range categories {
+		list = append(list, dtos.ProductCategoryListResponse{
+			ID:          c.ID,
+			Name:        c.Name,
+			Description: c.Description,
+			CreatedAt:   c.CreatedAt,
+			UpdatedAt:   c.UpdatedAt,
+		})
+	}
+
+	// Hitung pagination
+	totalPages := int((total + int64(req.Limit) - 1) / int64(req.Limit))
+	hasNextPage := req.Page < totalPages
+	nextPage := req.Page + 1
+	if !hasNextPage {
+		nextPage = 0
+	}
+
+	pagination := dtos.Pagination{
+		HasNextPage: hasNextPage,
+		NextPage:    &nextPage,
+		CurrentPage: req.Page,
+		TotalPages:  totalPages,
+		TotalItems:  int(total),
+	}
+
+	return list, pagination, nil
 }

@@ -15,24 +15,31 @@ type ProductMiddleware struct {
 func NewProductMiddleware(usecase usecases.ProductUseCase, log *logrus.Logger) *ProductMiddleware {
 	return &ProductMiddleware{usecase: usecase, log: log}
 }
-
 func (m *ProductMiddleware) Authorize(c *fiber.Ctx) error {
-	// userID := c.Locals("userID").(string)
 	role := c.Locals("role").(string)
-
 	endpoint := c.Route().Path
+	method := c.Method() // GET, POST, PUT, DELETE
+
+	// Rule khusus berdasarkan method
+	switch method {
+	case fiber.MethodGet:
+		// Alow users role to GET (list atau detail)
+		return c.Next()
+
+	case fiber.MethodPost, fiber.MethodPut, fiber.MethodDelete:
+		if role == "user" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Forbidden: user role is only allowed to view data",
+			})
+		}
+	}
+
 	switch endpoint {
-	case "/api/products/:id", "/api/product-categories/:id":
-		if role != "user" && role != "admin" && role != "super_admin" {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden"})
-		}
 	case "/api/product-stocks/:id", "/api/warehouse-locations/:id":
-		if role != "super_admin" {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden: Only super_admin can modify warehouse locations"})
-		}
-	default:
-		if role != "admin" && role != "super_admin" {
-			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{"error": "Forbidden: Only admin or super_admin can perform this action"})
+		if method != fiber.MethodGet && role != "super_admin" {
+			return c.Status(fiber.StatusForbidden).JSON(fiber.Map{
+				"error": "Forbidden: Only super_admin can modify warehouse locations or product stocks",
+			})
 		}
 	}
 

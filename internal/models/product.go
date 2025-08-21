@@ -37,6 +37,7 @@ type WarehouseLocation struct {
 	Description string         `gorm:"type:text"`
 	CreatedAt   time.Time      `gorm:"default:current_timestamp"`
 	DeletedAt   gorm.DeletedAt `gorm:"index"`
+	UpdatedAt   time.Time      `gorm:"default:current_timestamp"`
 }
 
 type ProductStock struct {
@@ -48,6 +49,7 @@ type ProductStock struct {
 	UpdatedBy           uuid.UUID      `gorm:"column:updated_by;type:uuid"`
 	UpdatedAt           time.Time      `gorm:"default:current_timestamp"`
 	DeletedAt           gorm.DeletedAt `gorm:"index"`
+	CreatedAt           time.Time      `gorm:"default:current_timestamp"`
 
 	Product           Product           `gorm:"foreignKey:SourceProductID;references:ID"`
 	WarehouseLocation WarehouseLocation `gorm:"foreignKey:WarehouseLocationID;references:ID"`

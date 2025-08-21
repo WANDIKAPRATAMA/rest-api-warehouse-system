@@ -93,6 +93,26 @@ type WarehouseLocationListResponse struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+type CreateWarehouseLocationRequest struct {
+	Name        string `json:"name" validate:"required"`
+	Description string `json:"description"`
+}
+
+// UpdateWarehouseLocationRequest
+type UpdateWarehouseLocationRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// WarehouseLocationResponse
+type WarehouseLocationResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 // ProductStockListResponse: Enriched dengan ProductName dan WarehouseName
 type ProductStockListResponse struct {
 	ID                  uuid.UUID `json:"id"`
@@ -105,12 +125,48 @@ type ProductStockListResponse struct {
 	UpdatedAt           time.Time `json:"updated_at"`
 }
 
-// DashboardResponse untuk summary
+// LowStockDetail untuk item low-stock dengan detail
+type LowStockDetail struct {
+	ProductID      uuid.UUID `json:"product_id"`
+	ProductName    string    `json:"product_name"`
+	WarehouseID    uuid.UUID `json:"warehouse_id"`
+	WarehouseName  string    `json:"warehouse_name"`
+	Quantity       int       `json:"quantity"`
+	Status         string    `json:"status"`
+	UpdatedByEmail string    `json:"updated_by_email"`
+	UpdatedByName  string    `json:"updated_by_name"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// OutOfStockDetail serupa dengan low-stock
+type OutOfStockDetail struct {
+	ProductID      uuid.UUID `json:"product_id"`
+	ProductName    string    `json:"product_name"`
+	WarehouseID    uuid.UUID `json:"warehouse_id"`
+	WarehouseName  string    `json:"warehouse_name"`
+	Quantity       int       `json:"quantity"`
+	Status         string    `json:"status"`
+	UpdatedByEmail string    `json:"updated_by_email"`
+	UpdatedByName  string    `json:"updated_by_name"`
+	UpdatedAt      time.Time `json:"updated_at"`
+}
+
+// RecentAddition untuk produk baru ditambahkan
+type RecentAddition struct {
+	ProductID      uuid.UUID `json:"product_id"`
+	ProductName    string    `json:"product_name"`
+	CreatedByEmail string    `json:"created_by_email"`
+	CreatedByName  string    `json:"created_by_name"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+// DashboardResponse yang lebih modular dan kompleks
 type DashboardResponse struct {
-	TotalStock       int64 `json:"total_stock"`
-	NumberOfProducts int64 `json:"number_of_products"`
-	LowStockItems    int64 `json:"low_stock_items"`
-	OutOfStockItems  int64 `json:"out_of_stock_items"`
+	TotalStock       int64              `json:"total_stock"`
+	NumberOfProducts int64              `json:"number_of_products"`
+	LowStockItems    []LowStockDetail   `json:"low_stock_items"`    // List detail low-stock
+	OutOfStockItems  []OutOfStockDetail `json:"out_of_stock_items"` // List detail out-of-stock
+	RecentAdditions  []RecentAddition   `json:"recent_additions"`   // List produk baru (misal last 5)
 }
 
 // PaginationRequest untuk query param
@@ -131,4 +187,12 @@ type Pagination struct {
 	CurrentPage int  `json:"current_page"`
 	TotalPages  int  `json:"total_pages"`
 	TotalItems  int  `json:"total_items"`
+}
+
+type ProductCategoryListResponse struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	Description string    `json:"description"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
 }

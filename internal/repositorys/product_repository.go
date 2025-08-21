@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -16,26 +17,87 @@ type ProductRepository interface {
 	GetProductByID(id uuid.UUID) (*models.Product, error)
 	UpdateProduct(product *models.Product) error
 	DeleteProduct(id uuid.UUID) error
+
 	CreateProductCategory(category *models.ProductCategory) error
 	GetProductCategoryByID(id uuid.UUID) (*models.ProductCategory, error)
 	UpdateProductCategory(category *models.ProductCategory) error
 	DeleteProductCategory(id uuid.UUID) error
+
 	CreateProductStock(stock *models.ProductStock) error
 	GetProductStockByID(id uuid.UUID) (*models.ProductStock, error)
 	UpdateProductStock(stock *models.ProductStock) error
 	DeleteProductStock(id uuid.UUID) error
+
+	CreateWarehouseLocation(location *models.WarehouseLocation) error
+	GetWarehouseLocationByID(id uuid.UUID) (*models.WarehouseLocation, error)
+	UpdateWarehouseLocation(location *models.WarehouseLocation) error
+	DeleteWarehouseLocation(id uuid.UUID) error
+
 	CreateStockMovement(movement *models.StockMovement) error
 
 	GetProductsList(req dtos.PaginationRequest) ([]models.Product, int64, error)
 	GetWarehouseLocationsList(req dtos.PaginationRequest) ([]models.WarehouseLocation, int64, error)
 	GetProductStocksList(req dtos.PaginationRequest) ([]models.ProductStock, int64, error)
-	GetDashboardSummary() (dtos.DashboardResponse, error)
+	GetDashboardSummary() (*dtos.DashboardResponse, error)
+	GetProductCategoriesList(req dtos.PaginationRequest) ([]models.ProductCategory, int64, error)
 }
 
 type productRepository struct {
 	db *gorm.DB
 }
 
+// CreateWarehouseLocation
+func (r *productRepository) CreateWarehouseLocation(location *models.WarehouseLocation) error {
+	return r.db.Create(location).Error
+}
+
+// GetWarehouseLocationByID
+func (r *productRepository) GetWarehouseLocationByID(id uuid.UUID) (*models.WarehouseLocation, error) {
+	var location models.WarehouseLocation
+	if err := r.db.Where("id = ? AND deleted_at IS NULL", id).First(&location).Error; err != nil {
+		return nil, err
+	}
+	return &location, nil
+}
+
+// UpdateWarehouseLocation
+func (r *productRepository) UpdateWarehouseLocation(location *models.WarehouseLocation) error {
+	return r.db.Save(location).Error
+}
+
+// DeleteWarehouseLocation
+func (r *productRepository) DeleteWarehouseLocation(id uuid.UUID) error {
+	return r.db.Where("id = ?", id).Delete(&models.WarehouseLocation{}).Error
+}
+
+// Todo: Warhouse Implemetation
+
+func (r *productRepository) GetProductCategoriesList(req dtos.PaginationRequest) ([]models.ProductCategory, int64, error) {
+	var categories []models.ProductCategory
+	var total int64
+
+	query := r.db.Model(&models.ProductCategory{}).Where("deleted_at IS NULL")
+	if req.Search != "" {
+		query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+req.Search+"%", "%"+req.Search+"%")
+	}
+
+	// Hitung total
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	// Pagination dan sorting
+	offset := (req.Page - 1) * req.Limit
+	query = query.Limit(req.Limit).Offset(offset)
+	if req.SortBy != "" {
+		query = query.Order(fmt.Sprintf("%s %s", req.SortBy, req.Order))
+	}
+
+	if err := query.Find(&categories).Error; err != nil {
+		return nil, 0, err
+	}
+	return categories, total, nil
+}
 func NewProductRepository(db *gorm.DB) ProductRepository {
 	return &productRepository{db: db}
 }
@@ -206,8 +268,8 @@ func (r *productRepository) GetProductStocksList(req dtos.PaginationRequest) ([]
 }
 
 // GetDashboardSummary
-func (r *productRepository) GetDashboardSummary() (dtos.DashboardResponse, error) {
-	var summary dtos.DashboardResponse
+func (r *productRepository) GetDashboardSummary() (*dtos.DashboardResponse, error) {
+	summary := &dtos.DashboardResponse{}
 
 	// Total stock: SUM(quantity)
 	r.db.Model(&models.ProductStock{}).Select("SUM(quantity)").Where("deleted_at IS NULL").Scan(&summary.TotalStock)
@@ -215,11 +277,100 @@ func (r *productRepository) GetDashboardSummary() (dtos.DashboardResponse, error
 	// Number of products: COUNT(distinct products)
 	r.db.Model(&models.Product{}).Where("deleted_at IS NULL").Count(&summary.NumberOfProducts)
 
-	// Low-stock items
-	r.db.Model(&models.ProductStock{}).Where("status = 'low-stock' AND deleted_at IS NULL").Count(&summary.LowStockItems)
+	// Low-stock items detail (join product, warehouse, user, profile)
+	var lowStockItems []struct {
+		ProductID      uuid.UUID
+		ProductName    string
+		WarehouseID    uuid.UUID
+		WarehouseName  string
+		Quantity       int
+		Status         string
+		UpdatedByEmail string
+		UpdatedByName  string
+		UpdatedAt      time.Time
+	}
+	r.db.Table("product_stocks ps").
+		Select("ps.id as product_id, p.name as product_name, ps.warehouse_location_id as warehouse_id, wl.name as warehouse_name, ps.quantity, ps.status, u.email as updated_by_email, up.full_name as updated_by_name, ps.updated_at").
+		Joins("JOIN products p ON p.id = ps.source_product_id").
+		Joins("JOIN warehouse_locations wl ON wl.id = ps.warehouse_location_id").
+		Joins("JOIN users u ON u.id = ps.updated_by").
+		Joins("JOIN user_profiles up ON up.source_user_id = u.id").
+		Where("ps.status = 'low-stock' AND ps.deleted_at IS NULL").
+		Limit(10). // Batasi untuk performa, misal top 10
+		Scan(&lowStockItems)
+	for _, item := range lowStockItems {
+		summary.LowStockItems = append(summary.LowStockItems, dtos.LowStockDetail{
+			ProductID:      item.ProductID,
+			ProductName:    item.ProductName,
+			WarehouseID:    item.WarehouseID,
+			WarehouseName:  item.WarehouseName,
+			Quantity:       item.Quantity,
+			Status:         item.Status,
+			UpdatedByEmail: item.UpdatedByEmail,
+			UpdatedByName:  item.UpdatedByName,
+			UpdatedAt:      item.UpdatedAt,
+		})
+	}
 
-	// Out-of-stock items
-	r.db.Model(&models.ProductStock{}).Where("status = 'out-of-stock' AND deleted_at IS NULL").Count(&summary.OutOfStockItems)
+	// Out-of-stock items detail (serupa dengan low-stock)
+	var outOfStockItems []struct {
+		ProductID      uuid.UUID
+		ProductName    string
+		WarehouseID    uuid.UUID
+		WarehouseName  string
+		Quantity       int
+		Status         string
+		UpdatedByEmail string
+		UpdatedByName  string
+		UpdatedAt      time.Time
+	}
+	r.db.Table("product_stocks ps").
+		Select("ps.id as product_id, p.name as product_name, ps.warehouse_location_id as warehouse_id, wl.name as warehouse_name, ps.quantity, ps.status, u.email as updated_by_email, up.full_name as updated_by_name, ps.updated_at").
+		Joins("JOIN products p ON p.id = ps.source_product_id").
+		Joins("JOIN warehouse_locations wl ON wl.id = ps.warehouse_location_id").
+		Joins("JOIN users u ON u.id = ps.updated_by").
+		Joins("JOIN user_profiles up ON up.source_user_id = u.id").
+		Where("ps.status = 'out-of-stock' AND ps.deleted_at IS NULL").
+		Limit(10).
+		Scan(&outOfStockItems)
+	for _, item := range outOfStockItems {
+		summary.OutOfStockItems = append(summary.OutOfStockItems, dtos.OutOfStockDetail{
+			ProductID:      item.ProductID,
+			ProductName:    item.ProductName,
+			WarehouseID:    item.WarehouseID,
+			WarehouseName:  item.WarehouseName,
+			Quantity:       item.Quantity,
+			Status:         item.Status,
+			UpdatedByEmail: item.UpdatedByEmail,
+			UpdatedByName:  item.UpdatedByName,
+			UpdatedAt:      item.UpdatedAt,
+		})
+	}
+
+	var recentAdditions []struct {
+		ProductID      uuid.UUID
+		ProductName    string
+		CreatedByEmail string
+		CreatedByName  string
+		CreatedAt      time.Time
+	}
+	r.db.Table("products p").
+		Select("p.id as product_id, p.name as product_name, u.email as created_by_email, up.full_name as created_by_name, p.created_at").
+		Joins("JOIN users u ON u.id = p.created_by").
+		Joins("JOIN user_profiles up ON up.source_user_id = u.id").
+		Where("p.deleted_at IS NULL").
+		Order("p.created_at DESC").
+		Limit(5).
+		Scan(&recentAdditions)
+	for _, item := range recentAdditions {
+		summary.RecentAdditions = append(summary.RecentAdditions, dtos.RecentAddition{
+			ProductID:      item.ProductID,
+			ProductName:    item.ProductName,
+			CreatedByEmail: item.CreatedByEmail,
+			CreatedByName:  item.CreatedByName,
+			CreatedAt:      item.CreatedAt,
+		})
+	}
 
 	return summary, nil
 }

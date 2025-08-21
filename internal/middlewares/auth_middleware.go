@@ -35,6 +35,7 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 	}
 	secret := m.config.GetString("jwt.secret")
 	token, err := utils.ValidateToken(secret, tokenString)
+	m.log.Printf("token: %v", token)
 	if err != nil || !token.Valid {
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid or expired token")
 	}

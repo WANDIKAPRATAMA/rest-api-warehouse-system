@@ -14,13 +14,15 @@ import (
 )
 
 type AuthMiddleware struct {
-	usecase usecases.AuthUseCase
-	log     *logrus.Logger
-	config  *viper.Viper
+	usecase  usecases.AuthUseCase
+	log      *logrus.Logger
+	config   *viper.Viper
+	jwtUtils *utils.JWTConfig
 }
 
-func NewAuth(usecase usecases.AuthUseCase, log *logrus.Logger, config *viper.Viper) *AuthMiddleware {
-	return &AuthMiddleware{usecase: usecase, log: log, config: config}
+func NewAuth(usecase usecases.AuthUseCase, log *logrus.Logger, config *viper.Viper, jwtUtils *utils.JWTConfig) *AuthMiddleware {
+	return &AuthMiddleware{usecase: usecase, log: log, config: config,
+		jwtUtils: jwtUtils}
 }
 
 func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
@@ -33,10 +35,14 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 	if tokenString == authHeader {
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid authorization header format")
 	}
-	secret := m.config.GetString("jwt.secret")
-	token, err := utils.ValidateToken(secret, tokenString)
-	m.log.Printf("token: %v", token)
+	// TODO: Replaced with actual on Utils
+	// secret := m.config.GetString("jwt.secret")
+	// token, err := utils.ValidateToken(secret, tokenString)
+
+	m.log.Printf("token: %v", tokenString)
+	token, err := m.jwtUtils.ValidateToken(c.Context(), tokenString, utils.AccessToken)
 	if err != nil || !token.Valid {
+		m.log.Printf("error: %v", err)
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid or expired token")
 	}
 
@@ -55,4 +61,21 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 	c.Locals("role", claims["role"].(string))
 
 	return c.Next()
+}
+
+type LocalKeys struct {
+	UserID uuid.UUID
+	Email  string
+	Role   string
+}
+
+func GetLocalKeys(c *fiber.Ctx) *LocalKeys {
+	userID, _ := c.Locals("userID").(uuid.UUID)
+	email, _ := c.Locals("email").(string)
+	role, _ := c.Locals("role").(string)
+	return &LocalKeys{
+		UserID: userID,
+		Email:  email,
+		Role:   role,
+	}
 }

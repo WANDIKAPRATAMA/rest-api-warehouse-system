@@ -32,10 +32,19 @@ type authUseCase struct {
 	validate *validator.Validate
 	log      *logrus.Logger
 	config   *viper.Viper
+	jwtUtils *utils.JWTConfig
 }
 
-func NewAuthUseCase(repo repositorys.UserRepository, log *logrus.Logger, validate *validator.Validate, config *viper.Viper) AuthUseCase {
-	return &authUseCase{repo: repo, log: log, validate: validate, config: config}
+func NewAuthUseCase(
+	repo repositorys.UserRepository,
+	log *logrus.Logger,
+	validate *validator.Validate,
+	config *viper.Viper,
+	jwtUtils *utils.JWTConfig,
+) AuthUseCase {
+	return &authUseCase{repo: repo, log: log, validate: validate, config: config,
+		jwtUtils: jwtUtils}
+
 }
 
 func (u *authUseCase) Signup(ctx context.Context, email, password, fullName string) (*models.User, error) {
@@ -92,17 +101,15 @@ func (u *authUseCase) Signin(ctx context.Context, email, password string, device
 		return "", "", nil, err
 	}
 
-	secret := u.config.GetString("jwt.secret")
+	// secret := u.config.GetString("jwt.secret")
 
-	accessToken, err := utils.GenerateAccessToken(secret, user.ID, user.Email, role)
+	// accessToken, err := utils.GenerateAccessToken(secret, user.ID, user.Email, role)
+	accessToken, err := u.jwtUtils.GenerateToken(ctx, user.ID, user.Email, role, utils.AccessToken)
 	if err != nil {
 		return "", "", nil, err
 	}
 
-	refreshTokenBytes := make([]byte, 32)
-	rand.Read(refreshTokenBytes)
-	refreshToken := hex.EncodeToString(refreshTokenBytes)
-
+	refreshToken, err := u.jwtUtils.GenerateToken(ctx, user.ID, user.Email, role, utils.RefreshToken)
 	refresh := &models.RefreshToken{
 		SourceUserID: user.ID,
 		TokenHash:    refreshToken,
@@ -162,10 +169,8 @@ func (u *authUseCase) RefreshToken(ctx context.Context, refreshToken string, dev
 		return "", "", err
 	}
 
-	secret := u.config.GetString("jwt.secret")
-
 	// Generate access token baru
-	accessToken, err := utils.GenerateAccessToken(secret, user.ID, user.Email, role)
+	accessToken, err := u.jwtUtils.GenerateToken(ctx, user.ID, user.Email, role, utils.AccessToken)
 	if err != nil {
 		return "", "", err
 	}

@@ -1,32 +1,161 @@
+// package utils
+
+// import (
+// 	"fmt"
+// 	"time"
+
+// 	"github.com/golang-jwt/jwt/v5"
+// 	"github.com/google/uuid"
+// 	"github.com/spf13/viper"
+// )
+
+// type JWTConfig struct {
+// 	AccesTokenSecretKey   string
+// 	RefreshTokenSecretKey string
+// }
+// type ValidatedMethod string
+
+// const (
+// 	AccessToken  ValidatedMethod = "access_token"
+// 	RefreshToken ValidatedMethod = "refresh_token"
+// )
+
+// func NewJWTClaims(viper *viper.Viper) *JWTConfig {
+// 	return &JWTConfig{
+// 		AccesTokenSecretKey:   viper.GetString("jwt.accesTokenSecret"),
+// 		RefreshTokenSecretKey: viper.GetString("jwt.refreshTokenSecret"),
+// 	}
+// }
+
+// // GenerateAccessToken membuat JWT access token
+// func (j *JWTConfig) GenerateToken(userID uuid.UUID, email, role string, method ValidatedMethod) (string, error) {
+// 	claims := jwt.MapClaims{
+// 		"user_id": userID.String(),
+// 		"email":   email,
+// 		"role":    role,
+// 		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
+// 	}
+
+// 	if method == RefreshToken {
+// 		claims["exp"] = time.Now().Add(30 * 24 * time.Hour).Unix()
+// 	}
+
+// 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+// 	if()
+// 	return token.SignedString([]byte(j.AccesTokenSecretKey))
+// }
+
+// // ValidateToken memverifikasi token dan mengembalikan claims
+// func (j *JWTConfig) ValidateToken(tokenString string, method ValidatedMethod) (*jwt.Token, error) {
+// 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+// 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+// 			return nil, fmt.Errorf("unexpected signing method")
+// 		}
+// 		if method == AccessToken {
+// 			secret := j.AccesTokenSecretKey
+// 			return []byte(secret), nil
+// 		}
+// 		secret := j.RefreshTokenSecretKey
+// 		return []byte(secret), nil
+// 	})
+// }
+
 package utils
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 )
 
+type JWTConfig struct {
+	AccesTokenSecretKey   string
+	RefreshTokenSecretKey string
+	RedisClient           *redis.Client
+}
+type ValidatedMethod string
+
+const (
+	AccessToken  ValidatedMethod = "access_token"
+	RefreshToken ValidatedMethod = "refresh_token"
+)
+
+func NewJWTCfg(viper *viper.Viper, rc *redis.Client) *JWTConfig {
+	return &JWTConfig{
+		AccesTokenSecretKey:   viper.GetString("jwt.accesTokenSecret"),
+		RefreshTokenSecretKey: viper.GetString("jwt.refreshTokenSecret"),
+		RedisClient:           rc,
+	}
+}
+
 // GenerateAccessToken membuat JWT access token
-func GenerateAccessToken(secret string, userID uuid.UUID, email, role string) (string, error) {
+func (j *JWTConfig) GenerateToken(ctx context.Context, userID uuid.UUID, email, role string, method ValidatedMethod) (string, error) {
+	var expires time.Duration
 	claims := jwt.MapClaims{
 		"user_id": userID.String(),
 		"email":   email,
 		"role":    role,
-		"exp":     time.Now().Add(30 * 24 * time.Hour).Unix(),
+	}
+
+	if method == RefreshToken {
+		expires = 30 * 24 * time.Hour
+		claims["exp"] = time.Now().Add(expires).Unix()
+	} else {
+		expires = 7 * 24 * time.Hour
+		claims["exp"] = time.Now().Add(expires).Unix()
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(secret))
+
+	// fix: ambil 2 value
+	var (
+		result string
+		err    error
+	)
+	if method == RefreshToken {
+		result, err = token.SignedString([]byte(j.RefreshTokenSecretKey))
+	} else {
+		result, err = token.SignedString([]byte(j.AccesTokenSecretKey))
+	}
+	if err != nil {
+		return "", err
+	}
+
+	// simpan token ke redis (pakai string langsung, tanpa pointer)
+	if _, err := j.RedisClient.Set(ctx, result, userID.String(), expires).Result(); err != nil {
+		return "", err
+	}
+
+	return result, nil
 }
 
-// ValidateToken memverifikasi token dan mengembalikan claims
-func ValidateToken(secret string, tokenString string) (*jwt.Token, error) {
+// ValidateToken memverifikasi token dan validasi ke redis
+func (j *JWTConfig) ValidateToken(ctx context.Context, tokenString string, method ValidatedMethod) (*jwt.Token, error) {
+	// validasi ke redis apakah token exist
+	val, err := j.RedisClient.Get(ctx, tokenString).Result()
+	if err == redis.Nil {
+		return nil, fmt.Errorf("token not found in redis")
+	} else if err != nil {
+		return nil, err
+	}
+
+	if val != tokenString {
+		return nil, fmt.Errorf("invalid token (not matched in redis)")
+	}
+
+	// parse JWT
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
 		}
-		return []byte(secret), nil
+		if method == AccessToken {
+			return []byte(j.AccesTokenSecretKey), nil
+		}
+		return []byte(j.RefreshTokenSecretKey), nil
 	})
 }

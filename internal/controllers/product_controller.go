@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"auth-service/internal/dtos"
+	middleware "auth-service/internal/middlewares"
 	"auth-service/internal/usecases"
 	"auth-service/internal/utils"
 
@@ -68,8 +69,11 @@ func (c *productController) CreateProductCategory(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	category, err := c.usecase.CreateProductCategory(ctx.Context(), req, userID)
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	category, err := c.usecase.CreateProductCategory(ctx.Context(), req, localKeys.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
@@ -178,8 +182,11 @@ func (c *productController) DeleteProductCategory(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	if err := c.usecase.DeleteProductCategory(ctx.Context(), categoryID, userID); err != nil {
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	if err := c.usecase.DeleteProductCategory(ctx.Context(), categoryID, localKeys.UserID); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
@@ -215,8 +222,11 @@ func (c *productController) CreateProductStock(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	stock, err := c.usecase.CreateProductStock(ctx.Context(), req, userID)
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	stock, err := c.usecase.CreateProductStock(ctx.Context(), req, localKeys.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
@@ -294,8 +304,11 @@ func (c *productController) UpdateProductStock(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	stock, err := c.usecase.UpdateProductStock(ctx.Context(), stockID, req, userID)
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	stock, err := c.usecase.UpdateProductStock(ctx.Context(), stockID, req, localKeys.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
@@ -325,8 +338,11 @@ func (c *productController) DeleteProductStock(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	if err := c.usecase.DeleteProductStock(ctx.Context(), stockID, userID); err != nil {
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	if err := c.usecase.DeleteProductStock(ctx.Context(), stockID, localKeys.UserID); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
@@ -362,8 +378,11 @@ func (c *productController) CreateProduct(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	product, err := c.usecase.CreateProduct(ctx.Context(), req, userID)
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	product, err := c.usecase.CreateProduct(ctx.Context(), req, localKeys.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
@@ -433,8 +452,11 @@ func (c *productController) UpdateProduct(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	product, err := c.usecase.UpdateProduct(ctx.Context(), productID, req, userID)
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	product, err := c.usecase.UpdateProduct(ctx.Context(), productID, req, localKeys.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
@@ -464,8 +486,11 @@ func (c *productController) DeleteProduct(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	if err := c.usecase.DeleteProduct(ctx.Context(), productID, userID); err != nil {
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	if err := c.usecase.DeleteProduct(ctx.Context(), productID, localKeys.UserID); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,
@@ -573,8 +598,11 @@ func (c *productController) CreateWarehouseLocation(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	location, err := c.usecase.CreateWarehouseLocation(ctx.Context(), req, userID)
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	location, err := c.usecase.CreateWarehouseLocation(ctx.Context(), req, localKeys.UserID)
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
@@ -688,8 +716,11 @@ func (c *productController) DeleteWarehouseLocation(ctx *fiber.Ctx) error {
 		})
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	if err := c.usecase.DeleteWarehouseLocation(ctx.Context(), locationID, userID); err != nil {
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	if err := c.usecase.DeleteWarehouseLocation(ctx.Context(), locationID, localKeys.UserID); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(dtos.ApiResponse{
 			Status:     "error",
 			StatusCode: fiber.StatusInternalServerError,

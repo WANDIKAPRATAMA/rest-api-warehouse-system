@@ -2,12 +2,12 @@ package controllers
 
 import (
 	"auth-service/internal/dtos"
+	middleware "auth-service/internal/middlewares"
 	"auth-service/internal/usecases"
 	"auth-service/internal/utils"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -108,8 +108,11 @@ func (c *authController) ChangePassword(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse(fiber.StatusBadRequest, err.Error(), errors))
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	if err := c.usecase.ChangePassword(ctx.Context(), userID, req.OldPassword, req.NewPassword); err != nil {
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	if err := c.usecase.ChangePassword(ctx.Context(), localKeys.UserID, req.OldPassword, req.NewPassword); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, err.Error(), nil))
 	}
 
@@ -168,8 +171,11 @@ func (c *authController) ChangeRole(ctx *fiber.Ctx) error {
 		return ctx.Status(fiber.StatusBadRequest).JSON(utils.ErrorResponse(fiber.StatusBadRequest, err.Error(), errors))
 	}
 
-	userID := ctx.Locals("userID").(uuid.UUID)
-	if err := c.usecase.ChangeRole(ctx.Context(), userID, req.Role); err != nil {
+	localKeys := middleware.GetLocalKeys(ctx)
+	if localKeys == nil {
+		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, "Internal Server error", nil))
+	}
+	if err := c.usecase.ChangeRole(ctx.Context(), localKeys.UserID, req.Role); err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(utils.ErrorResponse(fiber.StatusInternalServerError, err.Error(), nil))
 	}
 

@@ -14,15 +14,17 @@ import (
 )
 
 type AuthMiddleware struct {
-	usecase  usecases.AuthUseCase
-	log      *logrus.Logger
-	config   *viper.Viper
-	jwtUtils *utils.JWTConfig
+	usecase          usecases.AuthUseCase
+	log              *logrus.Logger
+	config           *viper.Viper
+	jwtUtils         *utils.JWTConfig
+	rateLimiterUtils *utils.RateLimiterUtil
 }
 
-func NewAuth(usecase usecases.AuthUseCase, log *logrus.Logger, config *viper.Viper, jwtUtils *utils.JWTConfig) *AuthMiddleware {
+func NewAuth(usecase usecases.AuthUseCase, log *logrus.Logger, config *viper.Viper, jwtUtils *utils.JWTConfig, rateLimiterUtil *utils.RateLimiterUtil) *AuthMiddleware {
 	return &AuthMiddleware{usecase: usecase, log: log, config: config,
-		jwtUtils: jwtUtils}
+		jwtUtils:         jwtUtils,
+		rateLimiterUtils: rateLimiterUtil}
 }
 
 func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
@@ -35,15 +37,16 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 	if tokenString == authHeader {
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid authorization header format")
 	}
-	// TODO: Replaced with actual on Utils
-	// secret := m.config.GetString("jwt.secret")
-	// token, err := utils.ValidateToken(secret, tokenString)
 
 	m.log.Printf("token: %v", tokenString)
 	token, err := m.jwtUtils.ValidateToken(c.Context(), tokenString, utils.AccessToken)
 	if err != nil || !token.Valid {
 		m.log.Printf("error: %v", err)
 		return fiber.NewError(fiber.StatusUnauthorized, "Invalid or expired token")
+	}
+
+	if allow := m.rateLimiterUtils.IsAllowed(c.Context(), tokenString); !allow {
+		return fiber.NewError(fiber.StatusTooManyRequests, "Too many requests")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)

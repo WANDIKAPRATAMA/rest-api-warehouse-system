@@ -30,11 +30,12 @@ type AppConfig struct {
 func NewAppConfig(config *AppConfig) {
 
 	jwtUtils := utils.NewJWTCfg(config.Viper, config.RedisClient)
+	rateLimiterUtils := utils.NewRateLimiterUtil(config.RedisClient)
 
 	userRepo := repositorys.NewUserRepository(config.DB, config.Log)
 	authUseCase := usecase.NewAuthUseCase(userRepo, config.Log, config.Validate, config.Viper, jwtUtils)
 	authController := controller.NewAuthController(authUseCase, config.Log, config.Validate)
-	authMiddleware := middleware.NewAuth(authUseCase, config.Log, config.Viper, jwtUtils)
+	authMiddleware := middleware.NewAuth(authUseCase, config.Log, config.Viper, jwtUtils, rateLimiterUtils)
 
 	productRepo := repositorys.NewProductRepository(config.DB)
 	productUseCase := usecase.NewProductUseCase(productRepo, config.Log, config.Validate)
